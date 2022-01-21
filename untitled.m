@@ -1,16 +1,18 @@
 clear
 load('data/x_opt.mat')
+load('data/se.MAT')
+se_struct = GetParameters(abs(se));
 delete(gcp('nocreate'))
 
 %% Settings of simulation
-nSim = 10000;
+nSim = 1000;
 T = 600;
 Tp = 25;
 gamma = 5;
 rng(1194866)
 
 %% Generate economy
-E   = GenerateEconomy(nSim,T, x_opt_struct);
+E   = GenerateEconomySE(nSim,T, x_opt_struct, se_struct);
 rho = 1 / (1 + mean(E.r,1:2));
 
 %%
