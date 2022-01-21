@@ -1,5 +1,5 @@
 clear
-load('x_opt.mat')
+load('data/x_opt.mat')
 
 %% Settings of simulation
 nSim = 1000;

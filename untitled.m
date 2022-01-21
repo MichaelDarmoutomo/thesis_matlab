@@ -1,5 +1,5 @@
 clear
-load('x_opt.mat')
+load('data/x_opt.mat')
 delete(gcp('nocreate'))
 
 %% Settings of simulation

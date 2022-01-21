@@ -1,6 +1,6 @@
 %% Load data and dependencies
 clear
-load("thesis_data_short.MAT")
+load("data/thesis_data_short.MAT")
 % load("thesis_data_param.MAT")
 
 %% Set initial values
