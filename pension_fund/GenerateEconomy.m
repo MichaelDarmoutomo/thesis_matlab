@@ -69,39 +69,39 @@ ec.X    = ec.X(:,:,1:end-1);
 
 %% Simulate bond prices
 nTau    = 64;   % Number of maturities
-c       = zeros(nTau,1);
-d       = zeros(nTau,2);
+% c       = zeros(nTau,1);
+% d       = zeros(nTau,2);
+% 
+% D = @(tau) (ec.K'+Lambda1'*Sigma_X) \ (expm(-tau*(ec.K'+Lambda1'*Sigma_X)) - ...
+%     eye(2)) * ec.delta_1r;
+% Cdot = @(s) -ec.delta_0r - Lambda0' * Sigma_X * D(s) + 0.5 * D(s)' * (Sigma_X' * Sigma_X) * D(s);
+% 
+% for i = 0:nTau
+%     c(i+1)    = C(i, Cdot, 500);
+%     d(i+1,:)  = D(i); 
+% end
 
-D = @(tau) (ec.K'+Lambda1'*Sigma_X) \ (expm(-tau*(ec.K'+Lambda1'*Sigma_X)) - ...
-    eye(2)) * ec.delta_1r;
-Cdot = @(s) -ec.delta_0r - Lambda0' * Sigma_X * D(s) + 0.5 * D(s)' * (Sigma_X' * Sigma_X) * D(s);
-
-for i = 0:nTau
-    c(i+1)    = C(i, Cdot, 500);
-    d(i+1,:)  = D(i); 
-end
-
-% c = fA(0:nTau+1, param.K, param.Lambda, param.lambda, param.delta_r)';
-% d = fB(0:nTau+1, param.K, param.Lambda, param.delta_r);
+c = fA(0:nTau+1, param.K, param.Lambda, param.lambda, param.delta_r)';
+d = fB(0:nTau+1, param.K, param.Lambda, param.delta_r);
 
 % Bond prices
-% P = zeros(length(c), nSim, T);
+P = zeros(length(c), nSim, T);
 for t = 1:T
-    ec.P(:,:,t) = exp(c + d*ec.X(:,:,t));
+    P(:,:,t) = exp(c + d*ec.X(:,:,t));
 end
 
-% ec.P = P(1:end-1,:,:);
-% ec.P2 = P(2:end,:,:);
+ec.P = P(1:end-1,:,:);
+ec.P2 = P(2:end,:,:);
 
-c2=c;
-d2=d;
-c2(1:end-1)=c(2:end);
-d2(1:end-1,:)=d(2:end,:);
-c2(end)=C(nTau+1,Cdot,50);
-d2(end,:)=D(nTau+1);
-for t = 1:T
-    ec.P2(:,:,t) = exp(c2 + d2*ec.X(:,:,t));
-end
+% c2=c;
+% d2=d;
+% c2(1:end-1)=c(2:end);
+% d2(1:end-1,:)=d(2:end,:);
+% c2(end)=C(nTau+1,Cdot,50);
+% d2(end,:)=D(nTau+1);
+% for t = 1:T
+%     ec.P2(:,:,t) = exp(c2 + d2*ec.X(:,:,t));
+% end
 
 % Wages
 ec.w = w_0 * ec.Pi;

@@ -15,6 +15,9 @@ function ec = GenerateEconomySE(nSim,T, param, se)
 % w      := T x nSim
 
 %% Initialization
+nSim = nSim * 10;    
+
+
 dt           = 1;
 ec.delta_0pi = normrnd(param.delta_pi(1), se.delta_pi(1), [1, nSim]);
 ec.delta_1pi = [
@@ -74,6 +77,42 @@ end
 w_0          = 25000;
 Sigma_X      = [eye(2); zeros(2)];
 
+counter = 0;
+idx = zeros(1, nSim);
+for s=1:nSim
+    eigenvalues = eig(ec.K(:,:,s) + Lambda1(1:2,:,s));
+    if ((sum(eigenvalues > 0.02) ~= 2) || (~isreal(eigenvalues)))
+        counter = counter + 1;
+        idx(:,s) = 1;
+    end
+end
+
+nSim = nSim / 10;
+% TODO: select only ~idx, and truncate to nSim.
+
+ec.delta_0pi = ec.delta_0pi(:,~idx);
+ec.delta_1pi = ec.delta_1pi(:,~idx);
+ec.delta_0r = ec.delta_0r(:,~idx);
+ec.delta_1r = ec.delta_1r(:,~idx);
+sigma_Pi = sigma_Pi(:,~idx);
+sigma_S = sigma_S(:,~idx);
+eta_S = eta_S(:,~idx);
+Lambda0 = Lambda0(:,~idx);
+Lambda1 = Lambda1(:,:,~idx);
+ec.K = ec.K(:,:,~idx);
+
+ec.delta_0pi = ec.delta_0pi(:,1:nSim);
+ec.delta_1pi = ec.delta_1pi(:,1:nSim);
+ec.delta_0r = ec.delta_0r(:,1:nSim);
+ec.delta_1r = ec.delta_1r(:,1:nSim);
+sigma_Pi = sigma_Pi(:,1:nSim);
+sigma_S = sigma_S(:,1:nSim);
+eta_S = eta_S(:,1:nSim);
+Lambda0 = Lambda0(:,1:nSim);
+Lambda1 = Lambda1(:,:,1:nSim);
+ec.K = ec.K(:,:,1:nSim);
+
+
 
 %% Simulation of economy
 ec.dZ          = normrnd(0, dt, [4, nSim, T]);
@@ -115,39 +154,53 @@ ec.X    = ec.X(:,:,1:end-1);
 
 %% Simulate bond prices
 nTau    = 64;   % Number of maturities
-c       = zeros(nTau,1);
-d       = zeros(nTau,2);
-
-D = @(tau) (ec.K'+Lambda1'*Sigma_X) \ (expm(-tau*(ec.K'+Lambda1'*Sigma_X)) - ...
-    eye(2)) * ec.delta_1r;
-Cdot = @(s) -ec.delta_0r - Lambda0' * Sigma_X * D(s) + 0.5 * D(s)' * (Sigma_X' * Sigma_X) * D(s);
-
-for i = 0:nTau
-    c(i+1)    = C(i, Cdot, 500);
-    d(i+1,:)  = D(i); 
-end
+% c       = zeros(nTau,1);
+% d       = zeros(nTau,2);
+% 
+% D = @(tau) (ec.K'+Lambda1'*Sigma_X) \ (expm(-tau*(ec.K'+Lambda1'*Sigma_X)) - ...
+%     eye(2)) * ec.delta_1r;
+% Cdot = @(s) -ec.delta_0r - Lambda0' * Sigma_X * D(s) + 0.5 * D(s)' * (Sigma_X' * Sigma_X) * D(s);
+% 
+% for i = 0:nTau
+%     c(i+1)    = C(i, Cdot, 500);
+%     d(i+1,:)  = D(i); 
+% end
 
 % c = fA(0:nTau+1, param.K, param.Lambda, param.lambda, param.delta_r)';
 % d = fB(0:nTau+1, param.K, param.Lambda, param.delta_r);
 
+c = zeros(nTau+2,nSim);
+d = zeros(nTau+2, 2, nSim);
+for s=1:nSim
+    if mod(s, 10) == 0
+        disp(s)
+    end
+
+    c(:,s) = fA(0:nTau+1, ec.K(:,:,s), Lambda1(1:2,:,s), Lambda0(1:2,s)', [ec.delta_0r(:,s);ec.delta_1r(:,s)]')';
+    d(:,:,s) = fB(0:nTau+1, ec.K(:,:,s), Lambda1(1:2,:,s), [ec.delta_0r(:,s);ec.delta_1r(:,s)]');
+end
+
+
 % Bond prices
-% P = zeros(length(c), nSim, T);
+P = zeros(size(c,1), nSim, T);
 for t = 1:T
-    ec.P(:,:,t) = exp(c + d*ec.X(:,:,t));
+    for s=1:nSim
+        P(:,s,t) = exp(c(:,s) + d(:,:,s)*ec.X(:,s,t));
+    end
 end
 
-% ec.P = P(1:end-1,:,:);
-% ec.P2 = P(2:end,:,:);
+ec.P = P(1:end-1,:,:);
+ec.P2 = P(2:end,:,:);
 
-c2=c;
-d2=d;
-c2(1:end-1)=c(2:end);
-d2(1:end-1,:)=d(2:end,:);
-c2(end)=C(nTau+1,Cdot,50);
-d2(end,:)=D(nTau+1);
-for t = 1:T
-    ec.P2(:,:,t) = exp(c2 + d2*ec.X(:,:,t));
-end
+% c2=c;
+% d2=d;
+% c2(1:end-1)=c(2:end);
+% d2(1:end-1,:)=d(2:end,:);
+% c2(end)=C(nTau+1,Cdot,50);
+% d2(end,:)=D(nTau+1);
+% for t = 1:T
+%     ec.P2(:,:,t) = exp(c2 + d2*ec.X(:,:,t));
+% end
 
 % Wages
 ec.w = w_0 * ec.Pi;

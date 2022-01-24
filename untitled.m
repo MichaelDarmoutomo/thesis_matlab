@@ -1,5 +1,5 @@
 clear
-load('data/x_opt.mat')
+load('data/x_opt_restricted.mat')
 load('data/se.MAT')
 se_struct = GetParameters(abs(se));
 delete(gcp('nocreate'))
@@ -12,7 +12,9 @@ gamma = 5;
 rng(1194866)
 
 %% Generate economy
+tic
 E   = GenerateEconomySE(nSim,T, x_opt_struct, se_struct);
+toc
 rho = 1 / (1 + mean(E.r,1:2));
 
 %%
