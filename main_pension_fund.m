@@ -1,8 +1,19 @@
-%%
+%% load data
 clear
-load('data/x_opt.mat')
-load('data/se.MAT')
-se_struct = GetParameters(abs(se));
+
+restricted = true;
+se = false;
+
+if (restricted)
+   load('data/x_opt_restricted.mat')
+else
+   load('data/x_opt.mat')
+end
+
+if (se)
+   load('data/se.MAT')
+    se_struct = GetParameters(abs(se), restricted);
+end
 
 %% Settings of simulation
 nSim = 1000;
@@ -12,8 +23,7 @@ gamma_list = [3,5,7];
 rng(1194866)
 
 %% Generate economy
-E   = GenerateEconomySE(nSim,T, x_opt_struct, se_struct);
-rho = 1 / (1 + mean(E.r,1:2));
+E = GenerateEconomy(nSim,T, x_opt_struct);
 
 %% Optimization
 options = optimoptions('fmincon', 'Display', 'iter', 'TolFun', 1e-6, ...
@@ -22,7 +32,7 @@ options = optimoptions('fmincon', 'Display', 'iter', 'TolFun', 1e-6, ...
 delete(gcp('nocreate'))
 parpool('threads')
 
-for i=1:2
+for i=1:length(gamma_list)
     gamma = gamma_list(i);
     
     filename = sprintf('results/gamma_%d-nSim_%d_SE.txt', gamma, nSim);

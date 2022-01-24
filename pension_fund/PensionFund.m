@@ -29,7 +29,7 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
 
     rho     = 1 / (1 + mean(E.r,1:2));
     U_ = zeros(T-Tp+1, nSim);
-%     parfor (s = 1:nSim)
+    parfor (s = 1:nSim)
 %     disp(s)  
     
     % create B such that people receive 40% of their salary as pension
@@ -85,10 +85,10 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
     B(:,:,2) = B(:,:,1);
     
     %% Run different ALMs
-    for s=1:nSim
-        if mod(s, 100) == 0
-            fprintf('Currently at %.2f percent. \n', s/nSim*100);
-        end
+%     for s=1:nSim
+%         if mod(s, 100) == 0
+%             fprintf('Currently at %.2f percent. \n', s/nSim*100);
+%         end
         discB(:,:,1)  = E.P(:,s,1) .* B(:,:,1);
         discB(:,:,2)  = E.P(:,s,2) .* B(:,:,2);
         
