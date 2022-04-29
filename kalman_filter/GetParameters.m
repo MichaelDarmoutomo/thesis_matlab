@@ -16,6 +16,23 @@ if (~restricted)
     p.Lambda = reshape(Lambda, 2, 2)';
     p.h = param(24:end).^2;
     
+elseif (restricted==2)  % SE mode
+    p.delta_pi = [0, param(1:2)];
+    p.delta_r = [0, param(3:4)];
+    K = param(5:7);
+    p.K = [K(1), 0 ; K(2),K(3)];
+    p.sigma_pi = [param(8:10), 0];
+    p.sigma_s = param(11:14);
+    p.lambda = param(15:16);
+    Lambda = param(17:20);
+    p.Lambda = reshape(Lambda, 2, 2)';
+    p.h = param(21:end);
+
+    % restrictions
+    B_inf = inv(p.K + p.Lambda)' * p.delta_r(2:3)';
+    p.delta_r(1) = log(1.021) +  p.lambda *  B_inf + 0.5 * (B_inf' * B_inf);
+    p.eta_s = log(1.056) - p.delta_r(1) + 0.5 * p.sigma_s * p.sigma_s';
+    p.delta_pi(1) = log(1.019) + 0.5 * p.sigma_pi * p.sigma_pi'; 
 else
     p.delta_pi = [0, param(1:2)];
     p.delta_r = [0, param(3:4)];

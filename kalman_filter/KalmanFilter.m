@@ -1,4 +1,4 @@
-function [V, u] = KalmanFilter(param, y)
+    function [V, u, X, Xhat, P, Phat] = KalmanFilter(param, y)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 

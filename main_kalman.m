@@ -1,13 +1,13 @@
 %% Load data and dependencies
 clear
-load("data/thesis_data_short.MAT")
-% load("thesis_data_param.MAT")
+% load("data/thesis_data_short.MAT")
+load("data/x_opt_restricted.MAT")
 
-restricted = true;
+restricted = false;
 
-%% Set initial values (unrestricted)
+%% Set initial values
 
-if (~restricted)
+if (~restricted) % (unrestricted)
 
     delta_pi = [0.02, -0.0028, -0.0014];
     delta_r = [0.02, -0.0094, -0.0024];
@@ -22,7 +22,7 @@ if (~restricted)
     init_param = [delta_pi, delta_r, K, sigma_pi, sigma_s, eta_s, lambda, Lambda, h];
     clearvars delta_pi delta_r K sigma_pi sigma_s eta_s lambda Lambda h;
     
-else
+else % (restricted)
     
     delta_pi = [-0.0028, -0.0014];
     delta_r = [-0.01, -0.0024];
@@ -52,10 +52,21 @@ options = optimset(options , 'TolX' , 1e-6);
 x_opt_struct = GetParameters(x_opt, restricted);
 
 %% Compute standard errors
-% Done in R.
+fLoss = @(x) wrapper(x,data, restricted);
+hess = hessian(fLoss, x_opt);
+se = diag(inv(hess));
 
 %%
-wrapper(x_opt, data)
+[~,~,  X, Xhat, P, Phat] = KalmanFilter(s, data);
+
+%% Kalman Smoother
+m = 6;
+param = x_opt;
+param = init_param;
+
+p_ = GetParameters(param, restricted);  % Split up array of parameters to individual
+s = KalmanParameters(p_, m);            % Get the parameters for Kalman filter
+[smoothedX,smoothedP,smoothedPcross,xi0_out, P0_out ] = KalmanSmoother(s, data); 
 
 %% Helper functions
 function loss=wrapper(param, data, restricted)

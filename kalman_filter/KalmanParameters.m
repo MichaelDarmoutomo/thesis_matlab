@@ -92,29 +92,3 @@ for i = 1:length(tau)-1
 end
 res=cumsum(p);
 end
-
-% 
-% function res=fB(tau, A_)
-% res = zeros(length(tau), 2);
-% for i=1:length(tau)
-%     tmp = expm(A_* tau(i));
-%     res(i,:) = tmp(4, 1:2);
-% end
-% end
-% 
-% function res=fAprime(tau, A_, lambda, delta_r)
-% res = zeros(1,length(tau));
-% for i=1:length(tau)
-%     B = fB(tau(i), A_);
-%     res(i) = B * lambda' + 0.5 * (B * B') - delta_r(1);
-% end
-% end
-% 
-% function res=fA(tau, A_, lambda, delta_r)
-% tau = [0,tau];
-% p = zeros(1,length(tau)-1);
-% for i = 1:length(tau)-1
-%     p(i) = integral(@(x) fAprime(x, A_, lambda, delta_r), tau(i), tau(i+1));
-% end
-% res=cumsum(p);
-% end

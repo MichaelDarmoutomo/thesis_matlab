@@ -1,11 +1,11 @@
-function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
+function [U_, CEC] = PensionFund(xx, E, afx, nSim, T, gamma, spread)
     % afx chooses adjustment factor, 1 = uniform, 2 = 3-2-1
     if afx == 4
         x = xx(1:2);
         beta = xx(3:end);
     elseif afx == 5
         x = xx(1:2);
-        beta = [xx(3:5); xx(6:8); xx(9:11)];
+        beta = [xx(3:5); xx(6:8); xx(9:11)]';
     else
         x = xx;
         beta= nan;
@@ -29,8 +29,10 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
 
     rho     = 1 / (1 + mean(E.r,1:2));
     U_ = zeros(T-Tp+1, nSim);
+    
+    af_ = zeros(Tw+Tp,nSim);
+    
     parfor (s = 1:nSim)
-%     disp(s)  
     
     % create B such that people receive 40% of their salary as pension
     B = zeros(Tw + Tp, Tw + Tp, T+1);
@@ -53,8 +55,8 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
     
     % Create alpha for gesloten smeren
     alpha=ones(Tw+Tp,1);
-    for i=1:9
-        alpha(i)=i/10;
+    for i=1:(spread-1)
+        alpha(i)=i/spread;
     end
     
     af = zeros(5, Tw+Tp);
@@ -78,9 +80,9 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
     % Needed for utility
     u       = @(x) x.^(1-gamma) / (1-gamma); % CRRA
     Xagg=sum(E.X,2)/nSim;
-%     Xagg2=zeros(2,T);
-%     Xagg2(:,:)=Xagg;
-%     rho     = 1/(1+E.delta_0r+mean(E.delta_1r'*Xagg2));
+    Xagg2=zeros(2,T);
+    Xagg2(:,:)=Xagg;
+    rho     = 1/(1+E.delta_0r+mean(E.delta_1r'*Xagg2));
     
     B(:,:,2) = B(:,:,1);
     
@@ -117,7 +119,6 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
         end
         L(1)  = sum(discB(:,:,1), "all");
         A(1)  = L(1);
-%         A_coverage(1)=x(2)*L(1);
         
         for t = 2:T
             if afx == 5
@@ -130,6 +131,7 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
             L(t)         = sum(discB(:,:,t), 'all');
             A(t)=A(t-1)*(x(1)*(1+E.dS_(t,s))+(1-x(1)-x(2))*(1+E.r(t,s)))+x(2)*CR(t-1)*L(t);
             CR(t)    = A(t) / L(t);
+            
             if CR(t) < 1
                 CRstrike = CRstrike + 1;
             else
@@ -140,11 +142,11 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
                 ksi(t)      = ind(t) * L(t) / sum(P .* ((alpha'.*af(afx,:)) .* B_year), 'all');
                 v(:,:,t)    = ksi(t) * alpha * af(afx,:);
             elseif CR(t) > 0.9 && CR(t) < 1.2
-                ind(t) = (A(t) - L(t)) / (9*A(t) + L(t));
+                ind(t) = (A(t) - L(t)) / ((spread-1)*A(t) + L(t));
                 ksi(t)      = ind(t) * L(t) / sum(P .* (af(afx,:) .* B_year), 'all');
                 v(:,:,t)    = ksi(t) * ones(Tw+Tp,1) * af(afx,:);
             elseif CR(t) > 1.20
-                ind(t) = (A(t) - L(t)) / (4*A(t) + L(t));
+                ind(t) = (A(t) - L(t)) / ((spread/2-1)*A(t) + L(t));
                 ksi(t)      = ind(t) * L(t) / sum(P .* (af(afx,:) .* B_year), 'all');
                 v(:,:,t)    = ksi(t) * ones(Tw+Tp,1) * af(afx,:);
             else %backstop 1
@@ -156,10 +158,7 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
             B_year    = (1 + v(:,:,t)) .* B_year;
             
             % Nonnegativity restriction for pensions
-%             b(b < 0)    = 0;
-%             B(:,:,t)    = b;
             B_year    = (abs(B_year) + B_year) / 2;
-%             B_year(B_year < 0) = 0;
             
             discB(:,:,t) = P .* B_year;
             L(t)         = sum(discB(:,:,t), 'all');
@@ -170,21 +169,11 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
             B_tmp = B_year(2:Tw+Tp,1:Tw+Tp-1);
             B_year = zeros(Tw+Tp, Tw+Tp);
             B_year(1:Tw+Tp-1,2:Tw+Tp) = B_tmp;
-%             B(Tw+Tp,:,t)    = 0;
-%             B(:,1,t)        = 0;
 
-%             for k = 1:Tw
-%                 B(:,k,t)    = B(:,k,t) + p*E.w(t,s) / (E.P2(:,s,t)' * Q(:,k)) * Q(:,k);
-%             end
-
-%             B(:,:,t) = B(:,:,t) + t(t(Q) * ((p*E$w[year,s]) / colSums(E$P2[,s,year] * Q)))
-            
             payout = (p * E.w(t,s)) ./ sum(P2 .* Q, 1);
             payout(Tw+1:end) = 0;
             B(:,:,t) = (B_year + payout) .* Q;
             
-%             B(:, :, t) = B_year;
-%             B(:, 1:Tw, t) = B_year(:, 1:Tw) + Q(:, 1:Tw) .* (p * E.w(t,s)) ./ sum(E.P2(:,s,t) .* Q(:, 1:Tw), 1);
             discB(:,:,t)    = P2 .* B(:,:,t);
             L(t)            = sum(discB(:,:,t), 'all');
             CR(t)=A(t)/L(t);
@@ -198,33 +187,44 @@ function CEC = PensionFund(xx, E, afx, nSim, T, gamma)
                     H(jt,t)  = p * E.P(1:Tw-jt+1,s,t)' * w_tilde(t,1:Tw-jt+1)';
                 end
                 af(3,:)  = (W(:,t) + H(:,t))' ./ W(:,t)';
+                af_(:,s) = af(3,:);
             end
         end
         
         %% Compute utility
         rho_ = 1 / (mean(E.r(:,s)) + 1);
-        %rho_=1/(1+E.delta_0r+mean(E.delta_1r'*X));
         
         % Loops over generations j
 %         for j = -Tw:T-Tw-Tp
-%             U(j+Tw+1,s) = 0;
+%             U2(j+Tw+1,s) = 0;
 %             % Loops over pension period (25 years) of generation j
 %             for t = j+Tw+1:j+Tw+Tp
-%                 U(j+Tw+1,s) = U(j+Tw+1,s) + rho_^(t-j-Tw-1) * u( B(1,t-j,t)/E.Pi(t,s));
+%                 U2(j+Tw+1,s) = U2(j+Tw+1,s) + rho_^(t-j-Tw-1) * u( B(1,t-j,t)/E.Pi(t,s));
 %             end
 %         end
-%         
+        
         % Vectorized version
         rho_sq = rho_.^(0:24);
         B_cut = squeeze(B(1, 41:end, :));
         for j = -Tw:T-Tw-Tp
             U(j+Tw+1, s) = sum(rho_sq .* u(diag(B_cut,j+Tw) ./ E.Pi(j+Tw+1:j+Tw+Tp,s))');
         end
-
+        
         U_(:,s) = U(:,s);
     end
-    
-    welfare = mean(U_(isfinite(U_)),2);
+
+    if (sum(isinf(U_), 1:2) > 0)
+        [size_U, ~] = size(U_);
+        welfare= zeros(size_U, 1);
+        for idx = 1:size_U
+            tmp = U_(idx,:);
+            welfare(idx,:) = mean(tmp(isfinite(tmp)), 'omitnan');
+        end
+    else
+        welfare = mean(U_, 2, 'omitnan');
+    end
+
+%     welfare = mean(U_, 2);
     SW = sum(rho.^(100:length(welfare)) .* welfare(100:end)');
     CEC = -((SW*(1-rho)^2 * (1-gamma)) / ((1-rho^Tp)*rho^101))^((1-gamma)^(-1));
 end
